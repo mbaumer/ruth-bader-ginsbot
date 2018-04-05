@@ -3,7 +3,7 @@ from __future__ import print_function
 
 from keras.preprocessing import sequence
 from keras.models import Sequential
-from keras.layers import Dense, Embedding
+from keras.layers import Dense, Embedding, Bidirectional
 from keras.layers import LSTM
 from sklearn.metrics import roc_curve
 
@@ -73,7 +73,7 @@ print('x_test shape:', x_test.shape)
 print('Build model...')
 model = Sequential()
 model.add(Embedding(max_features, 128))
-model.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2))
+model.add(Bidirectional(LSTM(128, dropout=0.2, recurrent_dropout=0.2)))
 model.add(Dense(1, activation='sigmoid'))
 
 # try using different optimizers and different optimizer configs
