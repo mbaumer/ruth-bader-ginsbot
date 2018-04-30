@@ -4,7 +4,7 @@ from __future__ import print_function
 from keras.preprocessing import sequence
 from keras.models import Sequential
 from keras.layers import Dense, Embedding
-from keras.layers import LSTM
+from keras.layers import LSTM, Bidirectional
 from sklearn.metrics import roc_curve
 
 import pandas as pd
@@ -49,8 +49,9 @@ print ('%unk:', N_unk/N_words*100)
 y = np.zeros(len(justice_lines))
 y[np.where(justice_lines['justice_vote'] == 'PETITIONER')] = 1
 
-train_inds = np.random.permutation(np.arange(len(justice_lines),dtype=int))[:int(len(justice_lines)*.7)]
-test_inds = np.random.permutation(np.arange(len(justice_lines),dtype=int))[int(len(justice_lines)*.7):]
+shuffled = np.random.permutation(np.arange(len(justice_lines),dtype=int))
+train_inds = shuffled[:int(len(justice_lines)*.7)]
+test_inds = shuffled[int(len(justice_lines)*.7):]
 
 max_features = len(word2id)
 maxlen = 200
@@ -73,7 +74,7 @@ print('x_test shape:', x_test.shape)
 print('Build model...')
 model = Sequential()
 model.add(Embedding(max_features, 128))
-model.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2))
+model.add(Bidirectional(LSTM(128, dropout=0.5, recurrent_dropout=0.2)))
 model.add(Dense(1, activation='sigmoid'))
 
 # try using different optimizers and different optimizer configs
@@ -106,11 +107,36 @@ plt.xlabel('FPR')
 plt.ylabel('TPR')
 plt.title('ROC Curve')
 plt.legend()
-plt.savefig('../results/roc.png')
+plt.savefig('../results/roc_utterance_level.png')
 
 plt.figure()
 plt.hist(y_pred,normed=True,bins=50)
 plt.xlabel('y_pred');
 plt.vlines(np.sum(y)/len(y),0,5,label='Prob. petitioner wins')
 plt.legend()
-plt.savefig('../results/ypred.png')
+plt.savefig('../results/ypred_utterance_level.png')
+
+out = justice_lines.iloc[train_inds]
+out['pred'] = pd.Series(y_pred.flatten(),index=out.index)
+stats = out[['case_id','speaker','justice_vote','pred']].groupby(['case_id','speaker'])
+marker = stats.agg({'justice_vote' :'first', 'pred':'mean'})['justice_vote'].values == 'PETITIONER'
+ynew = marker.astype('int')
+yhat_new = stats.agg({'justice_vote' :'first', 'pred':'mean'})['pred'].values
+
+out = justice_lines.iloc[test_inds]
+out['pred'] = pd.Series(y_pred_test.flatten(),index=out.index)
+stats = out[['case_id','speaker','justice_vote','pred']].groupby(['case_id','speaker'])
+marker = stats.agg({'justice_vote' :'first', 'pred':'mean'})['justice_vote'].values == 'PETITIONER'
+ynew_test = marker.astype('int')
+yhat_new_test = stats.agg({'justice_vote' :'first', 'pred':'mean'})['pred'].values
+
+fpr3,tpr3, _ = roc_curve(ynew,yhat_new)
+fpr4,tpr4, _ = roc_curve(ynew_test,yhat_new_test)
+fpr5,tpr5, _ = roc_curve(ynew_test,np.ones_like(ynew_test))
+plt.plot(fpr3,tpr3,label='Justice level train')
+plt.plot(fpr4,tpr4,label='Justice level test')
+plt.plot(fpr5,tpr5,label='Justice level -- say petitioner')
+plt.xlabel('FPR')
+plt.ylabel('TPR')
+plt.title('ROC Curve')
+plt.legend()
