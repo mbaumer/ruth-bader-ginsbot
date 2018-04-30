@@ -85,7 +85,7 @@ model.compile(loss='binary_crossentropy',
 print('Train...')
 model.fit(x_train, y_train,
           batch_size=batch_size,
-          epochs=20,
+          epochs=2,
           validation_data=(x_test, y_test))
 score, acc = model.evaluate(x_test, y_test,
                             batch_size=batch_size)
@@ -130,6 +130,7 @@ marker = stats.agg({'justice_vote' :'first', 'pred':'mean'})['justice_vote'].val
 ynew_test = marker.astype('int')
 yhat_new_test = stats.agg({'justice_vote' :'first', 'pred':'mean'})['pred'].values
 
+plt.figure()
 fpr3,tpr3, _ = roc_curve(ynew,yhat_new)
 fpr4,tpr4, _ = roc_curve(ynew_test,yhat_new_test)
 fpr5,tpr5, _ = roc_curve(ynew_test,np.ones_like(ynew_test))
@@ -140,3 +141,4 @@ plt.xlabel('FPR')
 plt.ylabel('TPR')
 plt.title('ROC Curve')
 plt.legend()
+plt.savefig('../results/justice_level.png')
